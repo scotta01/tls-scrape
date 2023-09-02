@@ -83,4 +83,4 @@ If you'd like to contribute to TLS Scrape, please fork the repository and use a 
 
 ## Licensing
 
-The code in this project is licensed under the MIT license. Please see the LICENSE file for more information.
+The code in this project is licensed under the MIT license. Please see the [LICENSE file](LICENSE) for more information.
