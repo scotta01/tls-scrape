@@ -1,5 +1,5 @@
 # TLS Scrape Library and Tool
-
+[![Go Reference](https://pkg.go.dev/badge/github.com/scotta01/tls-scrape.svg)](https://pkg.go.dev/github.com/scotta01/tls-scrape)
 TLS Scrape is both a Go library and a CLI tool designed to scrape websites for TLS certificate details and log relevant metrics.
 
 ## Features
@@ -47,6 +47,7 @@ To use the TLS Scrape library in your Go project:
 import "github.com/scotta01/tls-scrape"
 ```
 2. Utilize the scraping functions and data structures as needed in your application.
+   [![Go Reference](https://pkg.go.dev/badge/github.com/scotta01/tls-scrape.svg)](https://pkg.go.dev/github.com/scotta01/tls-scrape)
 
    
 ## CLI Tool Configuration
