@@ -22,13 +22,13 @@ func init() {
 	bindEnvWithFallback("fqdn")
 	bindEnvWithFallback("filepath")
 	bindEnvWithFallback("header")
-	bindEnvWithFallback("outfile")
+	bindEnvWithFallback("outdir")
 	bindEnvWithFallback("concurrency")
 
 	pflag.String("fqdn", "", "Fully Qualified Domain Name")
 	pflag.String("filepath", "", "Path to the websites CSV file")
 	pflag.String("header", "url", "Column header to look for in the CSV")
-	pflag.String("outfile", "", "Output path for JSON file")
+	pflag.String("outdir", "", "Output path for JSON file")
 	pflag.Int("concurrency", 10, "Maximum number of concurrent TLS connections")
 	pflag.Parse()
 	err := viper.BindPFlags(pflag.CommandLine)
@@ -42,7 +42,7 @@ func main() {
 	fqdn := viper.GetString("fqdn")
 	filepath := viper.GetString("filepath")
 	csvHeader := viper.GetString("header")
-	output := viper.GetString("outfile")
+	output := viper.GetString("outdir")
 	concurrency := viper.GetInt("concurrency")
 
 	if fqdn != "" && filepath != "" {
@@ -76,9 +76,11 @@ func main() {
 	}
 
 	if output != "" {
-		err = helper.WriteJSON(output, details)
-		if err != nil {
-			log.Fatal("Error writing JSON:", err)
+		for _, detail := range details {
+			err = helper.WriteJSON(output, detail)
+			if err != nil {
+				log.Fatal("Error writing JSON:", err)
+			}
 		}
 	}
 	err = helper.WriteLog(details)

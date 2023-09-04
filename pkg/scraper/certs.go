@@ -1,3 +1,5 @@
+// Package scraper provides functionality for scraping TLS certs, with a focus on
+// simple return values, but the underlying x509 is still accessible, if required.
 package scraper
 
 import (
@@ -19,7 +21,7 @@ type CertDetails struct {
 	Issuer     string              `json:"issuer"`
 	CRL        []string            `json:"crl"`
 	OCSPServer []string            `json:"ocsp_server"`
-	Raw        []*x509.Certificate `json:"raw"`
+	CertChain  []*x509.Certificate `json:"cert_chain"`
 }
 
 // Dialer is an interface for types that can dial and establish network
@@ -30,17 +32,17 @@ type Dialer interface {
 
 // GetLeafCert returns the leaf (or main) certificate from the scraped details.
 func (cd *CertDetails) GetLeafCert() *x509.Certificate {
-	return cd.Raw[0]
+	return cd.CertChain[0]
 }
 
 // GetIssuerCert returns the issuer's certificate from the scraped details.
 func (cd *CertDetails) GetIssuerCert() *x509.Certificate {
-	return cd.Raw[1]
+	return cd.CertChain[1]
 }
 
 // GetCertChain returns the entire chain of certificates from the scraped details.
 func (cd *CertDetails) GetCertChain() []*x509.Certificate {
-	return cd.Raw
+	return cd.CertChain
 }
 
 // fetchFromDomain retrieves the certificate details from the provided domain.
@@ -68,7 +70,7 @@ func (cd *CertDetails) fetchFromDomainWithDialer(domain string, dialer Dialer) e
 	}
 
 	certs := tlsGetter.ConnectionState().PeerCertificates
-	cd.Raw = certs
+	cd.CertChain = certs
 	if len(certs) == 0 {
 		return fmt.Errorf("no certificates found for domain %s", domain)
 	}

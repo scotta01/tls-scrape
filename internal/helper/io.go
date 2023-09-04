@@ -52,11 +52,12 @@ func ReadCSV(filename string, csvheader string) ([]string, error) {
 	return websites, nil
 }
 
-func WriteJSON(filename string, details []*scraper.CertDetails) error {
+func WriteJSON(directory string, details *scraper.CertDetails) error {
 	data, err := json.MarshalIndent(details, "", "  ")
 	if err != nil {
 		return err
 	}
+	filename := fmt.Sprintf("%s/%s.json", directory, details.Domain)
 	err = os.WriteFile(filename, data, 0644)
 	if err != nil {
 		return err
