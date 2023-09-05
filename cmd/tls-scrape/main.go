@@ -24,12 +24,14 @@ func init() {
 	bindEnvWithFallback("header")
 	bindEnvWithFallback("outdir")
 	bindEnvWithFallback("concurrency")
+	bindEnvWithFallback("prettyjson")
 
 	pflag.String("fqdn", "", "Fully Qualified Domain Name")
 	pflag.String("filepath", "", "Path to the websites CSV file")
 	pflag.String("header", "url", "Column header to look for in the CSV")
 	pflag.String("outdir", "", "Output path for JSON file")
 	pflag.Int("concurrency", 10, "Maximum number of concurrent TLS connections")
+	pflag.Bool("prettyjson", false, "Pretty print JSON output")
 	pflag.Parse()
 	err := viper.BindPFlags(pflag.CommandLine)
 	if err != nil {
@@ -44,6 +46,7 @@ func main() {
 	csvHeader := viper.GetString("header")
 	output := viper.GetString("outdir")
 	concurrency := viper.GetInt("concurrency")
+	prettyPrint := viper.GetBool("prettyjson")
 
 	if fqdn != "" && filepath != "" {
 		log.Fatal("You can only pass either fqdn or filepath and header, but not both.")
@@ -77,7 +80,7 @@ func main() {
 
 	if output != "" {
 		for _, detail := range details {
-			err = helper.WriteJSON(output, detail)
+			err = helper.WriteJSON(output, detail, prettyPrint)
 			if err != nil {
 				log.Fatal("Error writing JSON:", err)
 			}
