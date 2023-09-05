@@ -59,6 +59,7 @@ You can configure the TLS Scrape tool using flags or environment variables:
 - **header**: The column header in the CSV to look for. Default is url.
 - **outfile**: Output path if you wish to save the results as a JSON file.
 - **concurrency**: Maximum number of concurrent TLS connections. Default is 10.
+- **prettyjson**: Pretty print the JSON output. Default is false.
 
 > [!NOTE]  
 > Only provide either fqdn or (filepath and header). Both can't be provided together.

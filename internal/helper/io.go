@@ -65,7 +65,8 @@ func WriteJSON(directory string, details *scraper.CertDetails, prettyPrint bool)
 	if err != nil {
 		return err
 	}
-
+	// Add a newline to the end of the file so that commands like tail can read it.
+	data = append(data, '\n')
 	filename := fmt.Sprintf("%s/%s.json", directory, details.Domain)
 	err = os.WriteFile(filename, data, 0644)
 	if err != nil {
