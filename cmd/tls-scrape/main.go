@@ -40,6 +40,18 @@ func init() {
 
 }
 
+func chunkSlice(slice []string, chunkSize int) [][]string {
+	var chunks [][]string
+	for i := 0; i < len(slice); i += chunkSize {
+		end := i + chunkSize
+		if end > len(slice) {
+			end = len(slice)
+		}
+		chunks = append(chunks, slice[i:end])
+	}
+	return chunks
+}
+
 func main() {
 	fqdn := viper.GetString("fqdn")
 	filepath := viper.GetString("filepath")
@@ -67,28 +79,32 @@ func main() {
 		}
 	}
 
-	details, err := scraper.ScrapeTLS(websites, concurrency)
-	if err != nil {
-		if multiErr, ok := err.(*scraper.MultiError); ok {
-			for domain, e := range multiErr.Errors {
-				log.Printf("Failed to scrape domain %s with error: %s", domain, e.Error())
-			}
-		} else {
-			log.Fatal("Error scraping TLS:", err)
-		}
-	}
+	chunks := chunkSlice(websites, concurrency)
 
-	if output != "" {
-		for _, detail := range details {
-			err = helper.WriteJSON(output, detail, prettyPrint)
-			if err != nil {
-				log.Fatal("Error writing JSON:", err)
+	for _, chunk := range chunks {
+		details, err := scraper.ScrapeTLS(chunk, concurrency)
+		if err != nil {
+			if multiErr, ok := err.(*scraper.MultiError); ok {
+				for domain, e := range multiErr.Errors {
+					log.Printf("Failed to scrape domain %s with error: %s", domain, e.Error())
+				}
+			} else {
+				log.Printf("Error scraping TLS: %v", err)
 			}
 		}
-	}
-	err = helper.WriteLog(details)
-	if err != nil {
-		log.Fatal("Error writing log:", err)
-	}
 
+		if output != "" {
+			for _, detail := range details {
+				err = helper.WriteJSON(output, detail, prettyPrint)
+				if err != nil {
+					log.Printf("Error writing JSON for domain %s: %v", detail.Domain, err)
+				}
+			}
+		}
+
+		err = helper.WriteLog(details)
+		if err != nil {
+			log.Printf("Error writing log: %v", err)
+		}
+	}
 }
