@@ -3,7 +3,7 @@ module github.com/scotta01/tls-scrape
 go 1.19
 
 require (
-	github.com/prometheus/client_golang v1.20.1
+	github.com/prometheus/client_golang v1.20.5
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.17.0
 	golang.org/x/crypto v0.29.0
