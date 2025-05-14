@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"net"
 	"sync"
+	"time"
 )
 
 // CertDetails encapsulates various details about a certificate obtained
@@ -22,6 +23,9 @@ type CertDetails struct {
 	CRL        []string            `json:"crl"`
 	OCSPServer []string            `json:"ocsp_server"`
 	CertChain  []*x509.Certificate `json:"cert_chain"`
+	// Certificate validation information
+	Valid          bool     `json:"valid"`
+	ValidationErrs []string `json:"validation_errors,omitempty"`
 }
 
 // Dialer is an interface for types that can dial and establish network
@@ -31,28 +35,44 @@ type Dialer interface {
 }
 
 // GetLeafCert returns the leaf (or main) certificate from the scraped details.
+// Returns nil if the certificate chain is empty.
 func (cd *CertDetails) GetLeafCert() *x509.Certificate {
+	if cd.CertChain == nil || len(cd.CertChain) == 0 {
+		return nil
+	}
 	return cd.CertChain[0]
 }
 
 // GetIssuerCert returns the issuer's certificate from the scraped details.
+// Returns nil if the certificate chain doesn't include an issuer certificate.
 func (cd *CertDetails) GetIssuerCert() *x509.Certificate {
+	if cd.CertChain == nil || len(cd.CertChain) < 2 {
+		return nil
+	}
 	return cd.CertChain[1]
 }
 
 // GetCertChain returns the entire chain of certificates from the scraped details.
+// Returns nil if the certificate chain is empty.
 func (cd *CertDetails) GetCertChain() []*x509.Certificate {
 	return cd.CertChain
 }
 
 // fetchFromDomain retrieves the certificate details from the provided domain.
 func (cd *CertDetails) fetchFromDomain(domain string) error {
-	return cd.fetchFromDomainWithDialer(domain, &tls.Dialer{})
+	// Create a TLS configuration that skips certificate verification
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+	return cd.fetchFromDomainWithDialer(domain, &tls.Dialer{
+		Config: tlsConfig,
+	})
 }
 
 // fetchFromDomainWithDialer retrieves the certificate details from
 // the provided domain using a custom dialer.
 func (cd *CertDetails) fetchFromDomainWithDialer(domain string, dialer Dialer) error {
+	// Use the provided dialer to establish a connection
 	conn, err := dialer.Dial("tcp", domain+":443")
 	if err != nil {
 		return err
@@ -84,6 +104,75 @@ func (cd *CertDetails) fetchFromDomainWithDialer(domain string, dialer Dialer) e
 	cd.Issuer = cert.Issuer.String()
 	cd.CRL = cert.CRLDistributionPoints
 	cd.OCSPServer = cert.OCSPServer
+
+	// Manually validate the certificate
+	cd.Valid = true // Assume valid until proven otherwise
+	cd.ValidationErrs = []string{}
+
+	// Create a certificate pool with the system root certificates
+	roots, err := x509.SystemCertPool()
+	if err != nil {
+		// If we can't get system roots, create an empty pool
+		roots = x509.NewCertPool()
+	}
+
+	// Add intermediate certificates to the pool
+	intermediates := x509.NewCertPool()
+	for i, cert := range certs {
+		if i > 0 { // Skip the leaf certificate
+			intermediates.AddCert(cert)
+		}
+	}
+
+	// Verify the certificate chain
+	opts := x509.VerifyOptions{
+		DNSName:       domain,
+		Intermediates: intermediates,
+		Roots:         roots,
+	}
+
+	_, err = cert.Verify(opts)
+	if err != nil {
+		cd.Valid = false
+
+		// Parse the error to get detailed validation information
+		switch e := err.(type) {
+		case x509.CertificateInvalidError:
+			reason := "Certificate is invalid"
+			switch e.Reason {
+			case x509.Expired:
+				reason = "Certificate has expired or is not yet valid"
+			case x509.NotAuthorizedToSign:
+				reason = "Certificate is not authorized to sign other certificates"
+			case x509.IncompatibleUsage:
+				reason = "Certificate usage is incompatible with the intended usage"
+			case x509.CANotAuthorizedForThisName:
+				reason = "CA is not authorized for this name"
+			case x509.TooManyIntermediates:
+				reason = "Too many intermediate certificates"
+			default:
+				reason = fmt.Sprintf("Certificate is invalid (reason code: %d)", e.Reason)
+			}
+			cd.ValidationErrs = append(cd.ValidationErrs, reason)
+		case x509.HostnameError:
+			cd.ValidationErrs = append(cd.ValidationErrs, "Certificate is not valid for domain: "+domain)
+		case x509.UnknownAuthorityError:
+			cd.ValidationErrs = append(cd.ValidationErrs, "Certificate signed by unknown authority (possibly self-signed)")
+		default:
+			cd.ValidationErrs = append(cd.ValidationErrs, "Certificate validation error: "+err.Error())
+		}
+	}
+
+	// Check if the certificate is expired or not yet valid
+	now := time.Now()
+	if now.Before(cert.NotBefore) {
+		cd.Valid = false
+		cd.ValidationErrs = append(cd.ValidationErrs, "Certificate is not yet valid")
+	}
+	if now.After(cert.NotAfter) {
+		cd.Valid = false
+		cd.ValidationErrs = append(cd.ValidationErrs, "Certificate has expired")
+	}
 
 	return nil
 }
@@ -154,8 +243,16 @@ func ScrapeTLS(websites []string, concurrency int) ([]*CertDetails, error) {
 
 // String provides a string representation of the certificate details.
 func (c *CertDetails) String() string {
+	validationInfo := ""
+	if !c.Valid && len(c.ValidationErrs) > 0 {
+		validationInfo = fmt.Sprintf("Valid:%t ValidationErrors:%v ", c.Valid, c.ValidationErrs)
+	} else {
+		validationInfo = fmt.Sprintf("Valid:%t ", c.Valid)
+	}
+
 	return fmt.Sprintf(
 		"Domain:%s "+
+			"%s"+
 			"Serial:%s "+
 			"NotBefore:%s "+
 			"NotAfter:%s "+
@@ -163,6 +260,7 @@ func (c *CertDetails) String() string {
 			"CRL:%s "+
 			"OCSPServer:%s",
 		c.Domain,
+		validationInfo,
 		c.Serial,
 		c.NotBefore,
 		c.NotAfter,

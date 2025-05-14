@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/big"
 	"net"
+	"os"
 	"runtime/debug"
 	"testing"
 	"time"
@@ -22,8 +23,9 @@ func TestCertDetailsString(t *testing.T) {
 		Issuer:     "CN=Amazon RSA 2048 M02,O=Amazon,C=US",
 		CRL:        []string{"http://crl.r2m02.amazontrust.com/r2m02.crl"},
 		OCSPServer: []string{"http://ocsp.r2m02.amazontrust.com"},
+		Valid:      false,
 	}
-	expected := "Domain:www.jetbrains.com Serial:12070828292658740519284007523384970881 NotBefore:2023-02-28 00:00:00 +0000 UTC NotAfter:2024-02-09 23:59:59 +0000 UTC Issuer:CN=Amazon RSA 2048 M02,O=Amazon,C=US CRL:[http://crl.r2m02.amazontrust.com/r2m02.crl] OCSPServer:[http://ocsp.r2m02.amazontrust.com]"
+	expected := "Domain:www.jetbrains.com Valid:false Serial:12070828292658740519284007523384970881 NotBefore:2023-02-28 00:00:00 +0000 UTC NotAfter:2024-02-09 23:59:59 +0000 UTC Issuer:CN=Amazon RSA 2048 M02,O=Amazon,C=US CRL:[http://crl.r2m02.amazontrust.com/r2m02.crl] OCSPServer:[http://ocsp.r2m02.amazontrust.com]"
 	if cd.String() != expected {
 		t.Errorf("expected %s \n got %s", expected, cd.String())
 	}
@@ -95,6 +97,110 @@ func generateMockConnectionState() tls.ConnectionState {
 				OCSPServer:            []string{"http://ocsp.r2m02.amazontrust.com"},
 			},
 		},
+	}
+}
+
+func TestGetCertMethods(t *testing.T) {
+	// Create a test certificate chain
+	cert1 := &x509.Certificate{
+		SerialNumber: big.NewInt(1234567890),
+	}
+	cert2 := &x509.Certificate{
+		SerialNumber: big.NewInt(9876543210),
+	}
+
+	certChain := []*x509.Certificate{cert1, cert2}
+
+	cd := &CertDetails{}
+	cd.CertChain = certChain
+
+	// Test GetLeafCert
+	t.Run("GetLeafCert", func(t *testing.T) {
+		got := cd.GetLeafCert()
+		if got != cert1 {
+			t.Errorf("GetLeafCert() = %v, want %v", got, cert1)
+		}
+	})
+
+	// Test GetIssuerCert
+	t.Run("GetIssuerCert", func(t *testing.T) {
+		got := cd.GetIssuerCert()
+		if got != cert2 {
+			t.Errorf("GetIssuerCert() = %v, want %v", got, cert2)
+		}
+	})
+
+	// Test GetCertChain
+	t.Run("GetCertChain", func(t *testing.T) {
+		got := cd.GetCertChain()
+		if len(got) != len(certChain) {
+			t.Errorf("GetCertChain() returned %d certificates, want %d", len(got), len(certChain))
+		}
+		for i, cert := range got {
+			if cert != certChain[i] {
+				t.Errorf("GetCertChain()[%d] = %v, want %v", i, cert, certChain[i])
+			}
+		}
+	})
+
+	// Test with empty cert chain
+	cd = &CertDetails{}
+
+	t.Run("GetLeafCert with empty chain", func(t *testing.T) {
+		got := cd.GetLeafCert()
+		if got != nil {
+			t.Errorf("GetLeafCert() = %v, want nil", got)
+		}
+	})
+
+	t.Run("GetIssuerCert with empty chain", func(t *testing.T) {
+		got := cd.GetIssuerCert()
+		if got != nil {
+			t.Errorf("GetIssuerCert() = %v, want nil", got)
+		}
+	})
+
+	t.Run("GetCertChain with empty chain", func(t *testing.T) {
+		got := cd.GetCertChain()
+		if got != nil {
+			t.Errorf("GetCertChain() = %v, want nil", got)
+		}
+	})
+}
+
+func TestScrapeTLS(t *testing.T) {
+	// This test is more of an integration test and might be flaky depending on network conditions
+	// We'll use a small number of test domains that are unlikely to exist
+
+	// Skip this test if SKIP_NETWORK_TESTS environment variable is set
+	if os.Getenv("SKIP_NETWORK_TESTS") != "" {
+		t.Skip("Skipping network-dependent test")
+	}
+
+	domains := []string{"nonexistent1.example", "nonexistent2.example"}
+	concurrency := 2
+
+	details, err := ScrapeTLS(domains, concurrency)
+
+	// We expect all domains to fail (since they don't exist), so details should be empty
+	if len(details) != 0 {
+		t.Errorf("Expected 0 details, got %d", len(details))
+	}
+
+	// We should get an error
+	if err == nil {
+		t.Errorf("Expected error, got nil")
+	}
+
+	// The error should be a MultiError
+	multiErr, ok := err.(*MultiError)
+	if !ok {
+		t.Errorf("Expected MultiError, got %T", err)
+	}
+
+	// The MultiError should contain errors for all domains
+	if len(multiErr.Errors) != len(domains) {
+		t.Errorf("Expected %d errors, got %d", len(domains), len(multiErr.Errors))
 	}
 }
 

@@ -8,6 +8,8 @@ import (
 	"github.com/scotta01/tls-scrape/pkg/scraper"
 	"log"
 	"os"
+	"path/filepath"
+	"time"
 )
 
 func ReadCSV(filename string, csvheader string) ([]string, error) {
@@ -67,7 +69,7 @@ func WriteJSON(directory string, details *scraper.CertDetails, prettyPrint bool)
 	}
 	// Add a newline to the end of the file so that commands like tail can read it.
 	data = append(data, '\n')
-	filename := fmt.Sprintf("%s/%s.json", directory, details.Domain)
+	filename := filepath.Join(directory, details.Domain+".json")
 	err = os.WriteFile(filename, data, 0644)
 	if err != nil {
 		return err
@@ -101,5 +103,41 @@ func WriteLog(details []*scraper.CertDetails) error {
 		log.Println(i)
 	}
 
+	return nil
+}
+
+// WriteBundledJSON writes multiple certificate details to a single JSON file.
+// The filename will be in the format "tls-scrape-bundle-YYYYMMDD-HHMMSS.json"
+func WriteBundledJSON(directory string, details []*scraper.CertDetails, prettyPrint bool) error {
+	if len(details) == 0 {
+		return nil // Nothing to write
+	}
+
+	var data []byte
+	var err error
+
+	if prettyPrint {
+		data, err = json.MarshalIndent(details, "", "  ")
+	} else {
+		data, err = json.Marshal(details)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// Add a newline to the end of the file
+	data = append(data, '\n')
+
+	// Create a filename with timestamp
+	timestamp := time.Now().Format("20060102-150405") // YYYYMMDD-HHMMSS format
+	filename := filepath.Join(directory, fmt.Sprintf("tls-scrape-bundle-%s.json", timestamp))
+
+	err = os.WriteFile(filename, data, 0644)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Bundled %d certificate details into %s", len(details), filename)
 	return nil
 }
