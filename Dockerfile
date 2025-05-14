@@ -3,7 +3,8 @@ LABEL authors="scotta01"
 
 WORKDIR /go/src/
 COPY ./ /go/src/
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /go/bin/app /go/src/cmd/tls-scrape/main.go
+WORKDIR /go/src/
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /go/bin/app /go/src/cmd/tls-scrape/
 RUN echo "nobody:x:65534:65534:nobody:/:" > /go/src/passwd
 RUN chown nobody /go/bin/app
 RUN chmod +x /go/bin/app

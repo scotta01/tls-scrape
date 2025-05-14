@@ -9,7 +9,7 @@ TEST_FQDN = www.google.com
 # Compile the application
 build:
 	@echo "Building the Go application..."
-	go build -o $(BINARY_NAME) cmd/tls-scrape/main.go
+	go build -o $(BINARY_NAME) ./cmd/tls-scrape
 
 # Run the application
 run: build

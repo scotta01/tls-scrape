@@ -13,7 +13,11 @@ type MultiError struct {
 func (me *MultiError) Error() string {
 	errMsg := "Multiple errors occurred:\n"
 	for domain, err := range me.Errors {
-		errMsg += fmt.Sprintf("Domain: %s, Error: %s\n", domain, err.Error())
+		if err != nil {
+			errMsg += fmt.Sprintf("Domain: %s\nError: %s\n", domain, err.Error())
+		} else {
+			errMsg += fmt.Sprintf("Domain: %s\nError: <nil>\n", domain)
+		}
 	}
 	return errMsg
 }
