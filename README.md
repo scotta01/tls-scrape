@@ -7,13 +7,18 @@ TLS Scrape is both a Go library and a CLI tool designed to scrape websites for T
 
 - **Library**:
   - Scrape domains for TLS details programmatically.
+  - Scan IP addresses and subnets for TLS details.
   - Check OCSP status of certificates.
+  - Perform reverse DNS lookups.
+  - Check if hostnames are in certificates or SANs.
+  - Validate certificates and get detailed information about invalid certificates (expired, self-signed, etc.).
   - Capture and retrieve scraping metrics.
 
 - **CLI Tool**:
   - Scrape individual domains or lists from CSV files for TLS details.
+  - Scan individual IP addresses or entire subnets.
   - Expose metrics related to scraping process for Prometheus monitoring.
-  - Log all scraped details.
+  - Log all scraped details including reverse DNS information.
   - Dockerized for easy deployment.
 
 ## Getting Started
@@ -57,17 +62,36 @@ You can configure the TLS Scrape tool using flags or environment variables:
 - **fqdn**: Fully Qualified Domain Name. Use this if you're scraping a single domain.
 - **filepath**: Path to a CSV file containing a list of websites to scrape.
 - **header**: The column header in the CSV to look for. Default is url.
-- **outfile**: Output path if you wish to save the results as a JSON file.
+- **outdir**: Output directory if you wish to save the results as JSON files.
 - **concurrency**: Maximum number of concurrent TLS connections. Default is 10.
 - **prettyjson**: Pretty print the JSON output. Default is false.
+- **bundle**: Bundle all output into a single JSON file. Default is false.
+- **ip**: IP address to scan for TLS details.
+- **subnet**: Subnet in CIDR notation (e.g., 192.168.1.0/24) to scan for TLS details.
+- **port**: Port to connect to for TLS scanning. Default is 443.
 
 > [!NOTE]  
-> Only provide either fqdn or (filepath and header). Both can't be provided together.
+> Only provide one of: fqdn, filepath, ip, or subnet. These options are mutually exclusive.
+>
+> The tool will gracefully skip any IPs or domains that don't connect (e.g., unreachable or not running a TLS service) and continue scanning the rest. A message will be displayed for each skipped IP or domain.
 
 Example Usage:
 
 ```bash
-tls-scrape --fqdn=www.google.com --outfile=./google.json
+# Scan a single domain
+tls-scrape --fqdn=www.google.com --outdir=./output
+
+# Scan a list of domains from a CSV file
+tls-scrape --filepath=./websites.csv --header=url --outdir=./output
+
+# Scan a single IP address
+tls-scrape --ip=192.168.1.1 --port=443 --outdir=./output
+
+# Scan an entire subnet
+tls-scrape --subnet=192.168.1.0/24 --port=443 --outdir=./output
+
+# Bundle all output into a single file
+tls-scrape --subnet=192.168.1.0/24 --port=443 --outdir=./output --bundle --prettyjson
 ```
 
 ## Docker
