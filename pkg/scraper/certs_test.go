@@ -180,7 +180,7 @@ func TestScrapeTLS(t *testing.T) {
 	domains := []string{"nonexistent1.example", "nonexistent2.example"}
 	concurrency := 2
 
-	details, err := ScrapeTLS(domains, concurrency)
+	details, err := ScrapeTLS(domains, concurrency, 443)
 
 	// We expect all domains to fail (since they don't exist), so details should be empty
 	if len(details) != 0 {
@@ -249,7 +249,7 @@ func TestFetchFromDomainWithDialer(t *testing.T) {
 			}()
 
 			cd := &CertDetails{}
-			err := cd.fetchFromDomainWithDialer("example.com", tt.dialer)
+			err := cd.fetchFromDomainWithDialer("example.com", tt.dialer, 443)
 			if tt.expectedErr == "" && err != nil {
 				t.Errorf("expected no error, got: %v", err)
 			} else if tt.expectedErr != "" && (err == nil || err.Error() != tt.expectedErr) {

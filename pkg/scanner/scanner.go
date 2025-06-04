@@ -8,7 +8,8 @@ import (
 // ScanDomainsInternal is an internal function that scans a list of domains for TLS certificates
 // It handles chunking the domains for concurrent processing and error handling
 // The chunkSize parameter controls how many domains are processed in each chunk
-func ScanDomainsInternal(domains []string, concurrency int, chunkSize int) ([]*scraper.CertDetails, map[string]error) {
+// The port parameter specifies which port to connect to for TLS scanning
+func ScanDomainsInternal(domains []string, concurrency int, chunkSize int, port int) ([]*scraper.CertDetails, map[string]error) {
 	// Chunk the domains for concurrent processing
 	chunks := scraper.ChunkSlice(domains, chunkSize)
 
@@ -17,7 +18,7 @@ func ScanDomainsInternal(domains []string, concurrency int, chunkSize int) ([]*s
 	allErrors := make(map[string]error)
 
 	for _, chunk := range chunks {
-		details, err := scraper.ScrapeTLS(chunk, concurrency)
+		details, err := scraper.ScrapeTLS(chunk, concurrency, port)
 		if err != nil {
 			if multiErr, ok := err.(*scraper.MultiError); ok {
 				for domain, e := range multiErr.Errors {
