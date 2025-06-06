@@ -15,6 +15,7 @@ type DomainScannerConfig struct {
 	Concurrency  int
 	PrettyJSON   bool
 	BundleOutput bool
+	Port         int
 }
 
 // ScanDomains is a higher-level function that scans domains for TLS certificates using the provided configuration.
@@ -33,7 +34,7 @@ func ScanDomains(config DomainScannerConfig) ([]*scraper.CertDetails, map[string
 	}
 
 	// Use the ScanDomainsInternal function to handle chunking and processing
-	details, errors := ScanDomainsInternal(websites, config.Concurrency, config.Concurrency)
+	details, errors := ScanDomainsInternal(websites, config.Concurrency, config.Concurrency, config.Port)
 
 	// Handle errors
 	for domain, e := range errors {

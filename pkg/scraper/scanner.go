@@ -8,7 +8,8 @@ import (
 // It is used by the scanner package to implement higher-level scanning functionality.
 // It handles chunking the domains for concurrent processing and error handling.
 // The chunkSize parameter controls how many domains are processed in each chunk.
-func ScanDomains(domains []string, concurrency int, chunkSize int) ([]*CertDetails, map[string]error) {
+// The port parameter specifies which port to connect to for TLS scanning.
+func ScanDomains(domains []string, concurrency int, chunkSize int, port int) ([]*CertDetails, map[string]error) {
 	// Chunk the domains for concurrent processing
 	chunks := ChunkSlice(domains, chunkSize)
 
@@ -17,7 +18,7 @@ func ScanDomains(domains []string, concurrency int, chunkSize int) ([]*CertDetai
 	allErrors := make(map[string]error)
 
 	for _, chunk := range chunks {
-		details, err := ScrapeTLS(chunk, concurrency)
+		details, err := ScrapeTLS(chunk, concurrency, port)
 		if err != nil {
 			if multiErr, ok := err.(*MultiError); ok {
 				for domain, e := range multiErr.Errors {

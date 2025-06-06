@@ -59,21 +59,23 @@ func (cd *CertDetails) GetCertChain() []*x509.Certificate {
 }
 
 // fetchFromDomain retrieves the certificate details from the provided domain.
-func (cd *CertDetails) fetchFromDomain(domain string) error {
+// The port parameter specifies which port to connect to for TLS scanning.
+func (cd *CertDetails) fetchFromDomain(domain string, port int) error {
 	// Create a TLS configuration that skips certificate verification
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,
 	}
 	return cd.fetchFromDomainWithDialer(domain, &tls.Dialer{
 		Config: tlsConfig,
-	})
+	}, port)
 }
 
 // fetchFromDomainWithDialer retrieves the certificate details from
 // the provided domain using a custom dialer.
-func (cd *CertDetails) fetchFromDomainWithDialer(domain string, dialer Dialer) error {
+// The port parameter specifies which port to connect to for TLS scanning.
+func (cd *CertDetails) fetchFromDomainWithDialer(domain string, dialer Dialer, port int) error {
 	// Use the provided dialer to establish a connection
-	conn, err := dialer.Dial("tcp", domain+":443")
+	conn, err := dialer.Dial("tcp", fmt.Sprintf("%s:%d", domain, port))
 	if err != nil {
 		return err
 	}
@@ -179,7 +181,8 @@ func (cd *CertDetails) fetchFromDomainWithDialer(domain string, dialer Dialer) e
 
 // ScrapeTLS scrapes the given websites for TLS certificate details
 // concurrently and returns the collected information.
-func ScrapeTLS(websites []string, concurrency int) ([]*CertDetails, error) {
+// The port parameter specifies which port to connect to for TLS scanning.
+func ScrapeTLS(websites []string, concurrency int, port int) ([]*CertDetails, error) {
 	results := make(chan *CertDetails, len(websites))
 	errorChan := make(chan map[string]error, len(websites))
 
@@ -199,7 +202,7 @@ func ScrapeTLS(websites []string, concurrency int) ([]*CertDetails, error) {
 			defer timer.ObserveDuration()
 
 			certInfo := &CertDetails{}
-			err := certInfo.fetchFromDomain(site)
+			err := certInfo.fetchFromDomain(site, port)
 
 			<-sem // Release a concurrency token
 

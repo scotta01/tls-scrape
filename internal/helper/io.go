@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -80,6 +81,10 @@ func WriteJSON(directory string, details *scraper.CertDetails, prettyPrint bool)
 func WriteLog(details []*scraper.CertDetails) error {
 	var logString []string
 	for _, detail := range details {
+		// Format CRL and OCSPServer slices to be more readable
+		crlStr := formatStringSlice(detail.CRL)
+		ocspStr := formatStringSlice(detail.OCSPServer)
+
 		logString = append(logString, fmt.Sprintf(
 			"tls-scrape "+
 				"Domain:%s "+
@@ -94,8 +99,8 @@ func WriteLog(details []*scraper.CertDetails) error {
 			detail.NotBefore,
 			detail.NotAfter,
 			detail.Issuer,
-			detail.CRL,
-			detail.OCSPServer,
+			crlStr,
+			ocspStr,
 		))
 	}
 
@@ -104,6 +109,15 @@ func WriteLog(details []*scraper.CertDetails) error {
 	}
 
 	return nil
+}
+
+// formatStringSlice converts a slice of strings to a readable format
+// Returns a comma-separated string of the slice elements, or "null" if the slice is nil or empty
+func formatStringSlice(slice []string) string {
+	if slice == nil || len(slice) == 0 {
+		return "null"
+	}
+	return strings.Join(slice, ", ")
 }
 
 // WriteBundledJSON writes multiple certificate details to a single JSON file.

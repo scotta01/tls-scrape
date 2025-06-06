@@ -49,6 +49,7 @@ func main() {
 		Concurrency:  config.Concurrency,
 		PrettyJSON:   config.PrettyJSON,
 		BundleOutput: config.BundleOutput,
+		Port:         config.Port,
 	}
 
 	// Use the scanner package to scan domains

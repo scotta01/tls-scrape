@@ -22,7 +22,7 @@ func TestScanDomains_Chunking(t *testing.T) {
 	chunkSize := 2
 
 	// Call ScanDomains
-	details, errors := ScanDomains(domains, concurrency, chunkSize)
+	details, errors := ScanDomains(domains, concurrency, chunkSize, 443)
 
 	// We expect all domains to fail (since they don't exist), so details should be empty
 	// and errors should contain all domains
@@ -91,7 +91,7 @@ func TestScanDomains_EmptyInput(t *testing.T) {
 	concurrency := 2
 	chunkSize := 2
 
-	details, errors := ScanDomains(domains, concurrency, chunkSize)
+	details, errors := ScanDomains(domains, concurrency, chunkSize, 443)
 
 	if len(details) != 0 {
 		t.Errorf("Expected 0 details for empty input, got %d", len(details))
